@@ -172,3 +172,17 @@ cython_debug/
 
 # PyPI configuration file
 .pypirc
+
+# Jupyter Notebook checkpoints
+.ipynb_checkpoints/
+
+# Downloaded Raw Data (Large files - fetch with script)
+raw_data/
+*.zip
+
+# Saved Models (Potentially large - regenerate from code)
+models/
+*.joblib
+*.h5
+*.keras
+*.pb
