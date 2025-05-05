@@ -178,6 +178,7 @@ cython_debug/
 
 # Downloaded Raw Data (Large files - fetch with script)
 raw_data/
+/data
 *.zip
 
 # Saved Models (Potentially large - regenerate from code)
