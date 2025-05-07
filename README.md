@@ -3,13 +3,13 @@ KuaiRec Recommendation Algorithm for Feed Tailoring
 
 **Objective:** Develop a recommender system to suggest short videos to users based on user preferences, interaction histories, and video content using the KuaiRec dataset. The goal is to create a personalized and scalable recommendation engine.
 
+---
+
 ## 1. Introduction
 
 This project implements a multi-stage hybrid recommender system for short videos, leveraging the KuaiRec dataset. The system aims to provide personalized video suggestions by first generating a broad set of candidate videos for each user and then re-ranking these candidates using a more sophisticated model that incorporates rich user, item, and interaction features.
 
 The KuaiRec dataset is unique as its `small_matrix` is described as "fully observed," meaning nearly every user has an interaction record (with a `watch_ratio`) for every item. This makes the task primarily one of **ranking** items based on predicted engagement, rather than predicting missing interactions.
-
----
 
 ## 2. Project Setup
 
@@ -20,7 +20,7 @@ source venv/bin/activate
 pip install -r requirements.txt
 bash scripts/download_data.sh
 
-3. Methodology
+## 3. Methodology
 
 The project follows a structured approach, divided into several key stages implemented across Jupyter notebooks.
 Data Preprocessing & Preparation (Notebook 1_Data_Preparation.ipynb)
@@ -51,7 +51,7 @@ This notebook is responsible for transforming the raw KuaiRec data into a format
 
         test_user_item_map.pkl: A pickled Python dictionary mapping user_id to a set of item_ids they positively interacted with in the test period. This serves as the ground truth for evaluation.
 
-Exploratory Data Analysis (EDA) (Notebook 2_EDA.ipynb)
+### Exploratory Data Analysis (EDA) (Notebook 2_EDA.ipynb)
 
 This notebook analyzes the processed interactions_train.csv and video_metadata.csv.
 
@@ -69,7 +69,7 @@ EDA confirmed the data's characteristics (sparsity in training set, long tails, 
 Model Development (Notebook 3_Model_Training.ipynb)
 
 A multi-stage hybrid recommendation approach was adopted:
-Multi-Stage Recommendation Approach
+### Multi-Stage Recommendation Approach
 
     Stage 1: Candidate Generation: A model generates a larger set of potentially relevant items for each user.
 
@@ -160,7 +160,7 @@ Evaluation & Submission (Notebook 4_Evaluation_Submission.ipynb)
 
     Create Submission File: The submission.csv file was generated with user_id, item_id, and the predicted score.
 
-4. Experiments & Results
+## 4. Experiments & Results
 Defining Positive Interaction
 
 The watch_ratio was used as the primary engagement signal. A watch_ratio >= 1.0 was chosen to define a positive_interaction.
