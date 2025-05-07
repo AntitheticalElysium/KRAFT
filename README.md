@@ -110,3 +110,41 @@ A **multi-stage hybrid recommendation approach** was adopted:
     *   **NDCG@K (Normalized Discounted Cumulative Gain):** Measures ranking quality by considering the position of relevant items, giving higher scores if relevant items are ranked higher.
     The `utils.py` script contains functions for calculating these metrics.
 5.  **Create Submission File:** The `submission.csv` file was generated with `user_id`, `item_id`, and the predicted `score`.
+
+
+## 4. Experiments & Results
+
+### Defining Positive Interaction
+The `watch_ratio` was used as the primary engagement signal. A `watch_ratio >= 1.0` was chosen to define a `positive_interaction`.
+*   **Justification:** This threshold implies the user viewed at least the entire video. EDA on `interactions_train.csv` showed this captured ~32.79% of interactions as positive, providing a reasonable (though imbalanced) target for the binary classification ranker.
+
+### Model Performance
+The multi-stage hybrid model (ALS for candidate generation, LightGBM for ranking) was evaluated on a test set comprising 20% of the interaction data, split chronologically. The evaluation was performed on 1411 users for whom ground truth positive interactions were available in the test period.
+
+The following table summarizes the average ranking metrics achieved:
+
+| Metric         | @10    | @20    | @50    | @100   | @500   | @1000  |
+|----------------|--------|--------|--------|--------|--------|--------|
+| Avg Precision  | 0.7924 | 0.7529 | 0.6670 | 0.5468 | 0.3103 | 0.2043 |
+| Avg Recall     | 0.0460 | 0.0858 | 0.1819 | 0.2821 | 0.7620 | 1.0000 |
+| Avg NDCG       | 0.8110 | 0.7772 | 0.7036 | 0.6042 | 0.7014 | 0.8476 |
+
+**Observations from Results:**
+
+*   **High Top-K Precision:** The model exhibits strong precision at smaller values of K, with approximately 79% of the top 10 recommendations being relevant. This indicates that users are very likely to find engaging content at the beginning of their feed.
+*   **Excellent Ranking Quality (NDCG):** The NDCG scores are notably high, especially NDCG@10 at 0.8110. This signifies that not only are relevant items present in the top recommendations, but they are also ranked appropriately (more relevant items appear higher). Interestingly, NDCG@500 and NDCG@1000 also show strong ranking quality across a larger set of items.
+*   **Recall Improvement with K:** Recall starts low but increases significantly as K grows.
+    *   Recall@50 reaches ~18%, indicating that about one-fifth of all items a user liked in the test set are found within the top 50 recommendations.
+    *   Recall@500 impressively reaches ~76%, meaning the model can retrieve over three-quarters of the user's liked items if a larger recommendation slate is considered.
+    *   Recall@1000 achieves 1.0000, implying that within the top 1000 ranked items (from the `interactions_test.csv` pairs evaluated for each user), all ground truth positive items for those users were captured. This is expected given the "fully observed" nature of the small matrix, as all items were available to be scored. The challenge lies in ranking them correctly.
+*   **Precision-Recall Trade-off:** As expected, precision decreases as K increases, while recall increases. The significant jump in recall at K=500 suggests that many relevant items are scored reasonably well by the ranker but don't make it into the very top positions.
+
+### Handling Memory Constraints
+During development, memory issues were encountered, particularly during feature engineering for the LightGBM ranker (due to the large size of `ranker_train_df` with ~3.7M rows and many features) and during LightGBM training itself. These were addressed by:
+1.  **Feature Engineering Optimization:**
+    *   Downcasting data types (e.g., `float64` to `float32` for embeddings, `int64` to smaller integer types).
+    *   Explicitly deleting large intermediate DataFrames and using `gc.collect()`.
+    *   Calculating interaction counts more efficiently using `map(groupby().size())` instead of `transform('size')`.
+2.  **LightGBM Parameter Tuning for Memory:**
+    *   Setting `max_bin = 128` in LightGBM parameters helped reduce memory during training.
+    *   With these optimizations, training on the full dataset became feasible.
