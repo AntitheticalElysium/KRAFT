@@ -1,5 +1,4 @@
-# KRAFT
-KuaiRec Recommendation Algorithm for Feed Tailoring
+# KRAFT : KuaiRec Recommendation Algorithm for Feed Tailoring
 
 **Objective:** Develop a recommender system to suggest short videos to users based on user preferences, interaction histories, and video content using the KuaiRec dataset. The goal is to create a personalized and scalable recommendation engine.
 
@@ -10,6 +9,8 @@ KuaiRec Recommendation Algorithm for Feed Tailoring
 This project implements a multi-stage hybrid recommender system for short videos, leveraging the KuaiRec dataset. The system aims to provide personalized video suggestions by first generating a broad set of candidate videos for each user and then re-ranking these candidates using a more sophisticated model that incorporates rich user, item, and interaction features.
 
 The KuaiRec dataset is unique as its `small_matrix` is described as "fully observed," meaning nearly every user has an interaction record (with a `watch_ratio`) for every item. This makes the task primarily one of **ranking** items based on predicted engagement, rather than predicting missing interactions.
+
+--- 
 
 ## 2. Project Setup
 
@@ -22,6 +23,8 @@ source venv/bin/activate
 pip install -r requirements.txt
 
 bash scripts/download_data.sh
+
+--- 
 
 ## 3. Methodology
 
