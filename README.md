@@ -111,5 +111,3 @@ A **multi-stage hybrid recommendation approach** was adopted:
     *   **NDCG@K (Normalized Discounted Cumulative Gain):** Measures ranking quality by considering the position of relevant items, giving higher scores if relevant items are ranked higher.
     The `utils.py` script contains functions for calculating these metrics.
 5.  **Create Submission File:** The `submission.csv` file was generated with `user_id`, `item_id`, and the predicted `score`.
-
----
