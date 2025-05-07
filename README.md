@@ -2,7 +2,6 @@
 
 **Objective:** Develop a recommender system to suggest short videos to users based on user preferences, interaction histories, and video content using the KuaiRec dataset. The goal is to create a personalized and scalable recommendation engine.
 
----
 
 ## 1. Introduction
 
