@@ -10,7 +10,6 @@ This project implements a multi-stage hybrid recommender system for short videos
 
 The KuaiRec dataset is unique as its `small_matrix` is described as "fully observed," meaning nearly every user has an interaction record (with a `watch_ratio`) for every item. This makes the task primarily one of **ranking** items based on predicted engagement, rather than predicting missing interactions.
 
---- 
 
 ## 2. Project Setup
 
@@ -24,7 +23,6 @@ pip install -r requirements.txt
 
 bash scripts/download_data.sh
 
---- 
 
 ## 3. Methodology
 
