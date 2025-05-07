@@ -70,7 +70,6 @@ A **multi-stage hybrid recommendation approach** was adopted:
     *   User and item IDs from `interactions_train.csv` were mapped to contiguous 0-based integer indices using `sklearn.preprocessing.LabelEncoder`. These encoders are saved.
     *   A sparse user-item interaction matrix was created using `positive_interaction` as the signal (1 for positive, 0 for non-positive based on the threshold). The matrix dimensions are (number of users x number of items).
 3.  **Training:** The ALS model was trained on this sparse matrix.
-    *   *Hyperparameters (example):* `factors=64`, `regularization=0.01`, `iterations=20`.
 4.  **Output & Saving:** The trained ALS model, and the learned user and item embedding vectors, were saved to disk. These embeddings serve as crucial features for the ranking stage.
 
 #### Stage 2: Ranking (LightGBM)
