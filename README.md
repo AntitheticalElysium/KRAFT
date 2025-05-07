@@ -14,6 +14,7 @@ The KuaiRec dataset is unique as its `small_matrix` is described as "fully obser
 
 ### Installation: 
 
+```bash
 python -m venv venv
 
 source venv/bin/activate
@@ -21,7 +22,7 @@ source venv/bin/activate
 pip install -r requirements.txt
 
 bash scripts/download_data.sh
-
+```
 
 ## 3. Methodology
 
