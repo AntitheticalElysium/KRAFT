@@ -26,8 +26,6 @@ bash scripts/download_data.sh
 
 ## 3. Methodology
 
-The project follows a structured approach, divided into several key stages implemented across Jupyter notebooks.
-
 ### Data Preprocessing & Preparation (Notebook `1_Data_Preparation.ipynb`)
 
 This notebook is responsible for transforming the raw KuaiRec data into a format suitable for modeling and evaluation.
