@@ -28,7 +28,13 @@ bash scripts/download_data.sh
 
 ## 3. Methodology
 
-The recommender system uses a two-stage architecture to balance scalability and prediction accuracy:
+The system uses a **two-stage architecture**—common in large-scale recommender systems—for optimal trade-offs between speed and quality.
+
+**Justification for a Two-Stage Approach:**
+
+* **Scalability**: Ranking all items for every user is infeasible at scale due to high latency and cost.
+* **Efficiency**: Stage 1 (candidate generation) narrows millions of items to a few hundred; Stage 2 (ranking) applies a more accurate, resource-intensive model on this shortlist.
+* **Signal Diversity**: Each stage can exploit different strengths—broad patterns in Stage 1 (e.g., collaborative filtering), and detailed, fine-grained features in Stage 2 (e.g., user-item interaction features, item metadata).
 
 ### 3.1 Data Preparation and Feature Engineering
 
