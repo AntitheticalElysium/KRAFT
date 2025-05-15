@@ -172,12 +172,28 @@ Detailed in `notebooks/4_Model_Evaluation.ipynb`.
 
 ## 6. Conclusions and Future Work
 
-### 6.1 Conclusions
+Sure! Here's a more concise version of your **Conclusions and Future Work** section, while preserving all key insights:
 
-* Feature engineering—especially for daily item features—was critical for efficiency and accuracy.
-* LightGBM shows excellent ranking performance on known cohorts and reasonable performance on unseen data.
-* `small_matrix` is a useful validation tool.
-* L1 loss was a suitable choice for `watch_ratio` prediction.
+---
+
+## 6. Conclusions and Future Work
+
+### 6.1. Conclusions
+
+* Careful feature engineering—especially optimized daily item features—was critical for memory efficiency and model performance.
+* LightGBM ranked well on known data and showed solid generalization on `big_matrix`, offering a reliable baseline.
+* `small_matrix` proved valuable for in-depth validation on dense user cohorts.
+* L1 loss suited the skewed nature of the `watch_ratio` target.
+
+**Memory Optimization Highlights:**
+
+1. **Selective Feature Loading**: Only essential columns were read from raw files.
+2. **Slim Merge Tables**: Merged pre-aggregated ratios, not raw counts.
+3. **Duplicate Removal**: Cleaning `(video_id, date)` duplicates prevented merge-time row explosion.
+4. **Manual Memory Management**: Frequent `del` and `gc.collect()` kept memory use low.
+5. **Optimized Dtypes**: Used compact numerical types where possible.
+
+These steps enabled processing the 12.5M-row `big_matrix` on a single machine.
 
 ### 6.2 Future Work
 
