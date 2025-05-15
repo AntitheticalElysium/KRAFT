@@ -34,7 +34,7 @@ The system uses a **two-stage architecture**—common in large-scale recommender
 
 * **Scalability**: Ranking all items for every user is infeasible at scale due to high latency and cost.
 * **Efficiency**: Stage 1 (candidate generation) narrows millions of items to a few hundred; Stage 2 (ranking) applies a more accurate, resource-intensive model on this shortlist.
-* **Signal Diversity**: Each stage can exploit different strengths—broad patterns in Stage 1 (e.g., collaborative filtering), and detailed, fine-grained features in Stage 2 (e.g., user-item interaction features, item metadata).
+* **Signal Diversity**: Each stage can exploit different strengths—broad patterns in Stage 1 (collaborative filtering, etc...), and detailed, fine-grained features in Stage 2 (user-item interaction features, item metadata, etc...).
 
 ### 3.1 Data Preparation and Feature Engineering
 
