@@ -24,126 +24,171 @@ pip install -r requirements.txt
 bash scripts/download_data.sh
 ```
 
-## 3. Methodology
+3. Methodology
 
-### Data Preprocessing & Preparation (Notebook `1_Data_Preparation.ipynb`)
+The recommender system employs a two-stage architecture, a common pattern for balancing scalability and prediction accuracy in large-scale systems:
+3.1. Data Preparation and Feature Engineering
 
-This notebook is responsible for transforming the raw KuaiRec data into a format suitable for modeling and evaluation.
+This crucial phase (detailed in notebooks/1_Data_Preparation.ipynb) involves:
 
-*   **Load Raw Data:** `small_matrix.csv` (interactions) and `item_categories.csv` (item metadata) are loaded.
-*   **Create `video_metadata.csv`:** `item_id` (renamed from `video_id`) and `feat` (item category/tag list) are extracted from `item_categories.csv`.
-*   **Process Interactions:**
-    *   `video_id` is renamed to `item_id` for consistency.
-    *   A `positive_interaction` flag (target variable) is derived from the `watch_ratio`. Based on EDA and dataset description, a `watch_ratio >= 1.0` was chosen, implying the user watched the video to completion. This choice aims to capture significant engagement.
-    *   Interactions are sorted chronologically by `timestamp`.
-*   **Time-Based Split:** The sorted interactions are split into training (80%) and testing (20%) sets to simulate a real-world scenario where we predict future interactions.
-*   **Generate Output Files:**
-    *   `interactions_train.csv`: Contains `user_id`, `item_id`, `watch_ratio`, `timestamp`, and `positive_interaction` for the training period.
-    *   `interactions_test.csv`: Contains `user_id`, `item_id` pairs from the test period for which predictions will be made. Users not present in the training set are filtered out.
-    *   `sample_submission.csv`: A template file with `user_id`, `item_id`, and a placeholder `score`.
-    *   `test_user_item_map.pkl`: A pickled Python dictionary mapping `user_id` to a set of `item_id`s they positively interacted with in the test period. This serves as the ground truth for evaluation.
+    Loading Raw Data: Ingesting big_matrix.csv, small_matrix.csv, user_features.csv, item_categories.csv, and item_daily_features.csv.
 
-### Exploratory Data Analysis (EDA) (Notebook `2_EDA.ipynb`)
+    Initial Cleaning: Handling missing values, correcting data types, and parsing complex string fields (e.g., item tags).
 
-This notebook analyzes the *processed* `interactions_train.csv` and `video_metadata.csv`.
+    Feature Creation:
 
-*   **Interaction Statistics:** Analyzed the number of unique users, items, interactions, and data sparsity.
-*   **Distribution Analysis:** Investigated the distribution of interactions per user and per item, revealing typical long-tail distributions. This highlights potential popularity bias.
-*   **Interaction Signal:** Examined the distribution of `watch_ratio` and the balance of the `positive_interaction` label. This confirmed the chosen threshold for positive interaction resulted in an imbalanced dataset (common in recommendations).
-*   **Temporal Patterns:** Plotted interactions per day to observe any trends or seasonality.
-*   **Metadata Analysis:** Explored the `feat` column (item categories), including the number of categories per item and the frequency of individual category IDs.
+        Temporal Features: Extracting interaction_hour and interaction_day_of_week from interaction timestamps.
 
-EDA confirmed the data's characteristics (sparsity in training set, long tails, label imbalance) which informed the modeling strategy.
+        User Features: Utilizing selected features like user_active_degree, fans_user_num, register_days, is_lowactive_period, is_live_streamer, is_video_author, and pre-encoded onehot_feat*.
 
-### Model Development (Notebook `3_Model_Training.ipynb`)
+        Static Item Features: Deriving num_item_tags from item_categories.csv.
 
-A **multi-stage hybrid recommendation approach** was adopted:
+        Dynamic Item Features: Calculating video_age_days (from upload_dt), and key daily engagement ratios (daily_play_per_show_ratio, daily_like_per_play_ratio, daily_completion_rate) from item_daily_features.csv. Selected raw daily stats like daily_play_progress, video_duration_daily, author_id, video_type, and daily video_tag_id are also incorporated.
 
-#### Multi-Stage Recommendation Approach
-1.  **Stage 1: Candidate Generation:** A model generates a larger set of potentially relevant items for each user.
-2.  **Stage 2: Ranking:** A more complex model re-ranks these candidates using richer features to produce the final, ordered recommendation list.
+        Duplicate Handling: A critical step involved identifying and removing duplicate entries in item_daily_features based on (video_id, date) to prevent data explosion during merges.
 
-#### Stage 1: Candidate Generation (ALS)
-1.  **Model Choice:** Alternating Least Squares (ALS) from the `implicit` library was chosen. ALS is effective for implicit feedback data and can efficiently learn user and item latent factor embeddings.
-2.  **Data Preparation:**
-    *   User and item IDs from `interactions_train.csv` were mapped to contiguous 0-based integer indices using `sklearn.preprocessing.LabelEncoder`. These encoders are saved.
-    *   A sparse user-item interaction matrix was created using `positive_interaction` as the signal (1 for positive, 0 for non-positive based on the threshold). The matrix dimensions are (number of users x number of items).
-3.  **Training:** The ALS model was trained on this sparse matrix.
-4.  **Output & Saving:** The trained ALS model, and the learned user and item embedding vectors, were saved to disk. These embeddings serve as crucial features for the ranking stage.
+    Data Splitting & Saving:
 
-#### Stage 2: Ranking (LightGBM)
-1.  **Model Choice:** LightGBM, a gradient boosting framework, was chosen for its efficiency, ability to handle large datasets, and good performance with categorical features. The task is framed as a binary classification problem: predicting the `positive_interaction` flag.
-2.  **Feature Engineering for Ranker:**
-    A rich feature set was constructed for each user-item pair in `interactions_train.csv`:
-    *   **User Features (from `user_features.csv`):**
-        *   `user_active_degree` (categorical)
-        *   `is_lowactive_period`, `is_live_streamer`, `is_video_author` (binary/numerical)
-        *   `follow_user_num`, `fans_user_num`, `friend_user_num`, `register_days` (numerical)
-        *   `onehot_feat0` to `onehot_feat17` (categorical)
-    *   **Item Features (from `video_metadata.csv`):**
-        *   `num_categories`: Number of categories associated with the item (derived from `feat`).
-    *   **Collaborative Features (from ALS):**
-        *   User embedding vector (64 dimensions).
-        *   Item embedding vector (64 dimensions).
-    *   **Interaction Count Features:**
-        *   `user_interaction_count`: Total interactions for the user in the training set.
-        *   `item_interaction_count`: Total interactions for the item in the training set.
-3.  **Data Preparation for LightGBM:**
-    *   All features were merged onto the `interactions_train_df`.
-    *   Missing values were imputed (0 for numerical, -1 for categorical features before `astype('category')`). This strategy was chosen for simplicity and to handle NaNs introduced during left merges if users/items had no external features or embeddings (e.g., items only in interactions but not in metadata, or users not in `user_features.csv`).
-    *   Categorical features (like `user_active_degree` and `onehot_feat*`) were converted to `category` dtype, which LightGBM handles natively.
-4.  **Training:**
-    *   The feature-engineered dataset was split into training (80%) and validation (20%) sets for LightGBM using `train_test_split` with stratification on the target.
-    *   The LightGBM classifier was trained using parameters like `objective='binary'`, `metric='auc'`, `n_estimators=1000` (with early stopping on validation AUC).
-5.  **Output & Saving:** The trained LightGBM model and the list of feature columns used for training were saved.
+        The big_matrix is chronologically split into training (80%) and testing (20%) sets for the LightGBM ranker.
 
-### Evaluation & Submission (Notebook `4_Evaluation_Submission.ipynb`)
+        The feature-engineered small_matrix is saved separately for dense evaluation.
 
-1.  **Load Models & Data:** Trained ALS (for embeddings), LightGBM ranker, encoders, feature list, `interactions_test.csv`, and `test_user_item_map.pkl` (ground truth) were loaded.
-2.  **Prepare Test Features:** The *exact same* feature engineering and imputation steps applied to the training data were replicated for the `interactions_test.csv` pairs. This ensures consistency.
-3.  **Generate Predictions:** The LightGBM ranker predicted the probability of positive interaction (`score`) for each user-item pair in the test set.
-4.  **Evaluation Metrics:**
-    The performance of the ranker was evaluated using standard ranking metrics @K (K=10, 20, 50). These metrics are meaningful for recommendation tasks as they assess the quality of the top-N ranked list.
-    *   **Precision@K:** Proportion of recommended items in the top-K that are relevant.
-    *   **Recall@K:** Proportion of all relevant items (ground truth for a user) that are found in the top-K recommendations.
-    *   **NDCG@K (Normalized Discounted Cumulative Gain):** Measures ranking quality by considering the position of relevant items, giving higher scores if relevant items are ranked higher.
-    The `utils.py` script contains functions for calculating these metrics.
-5.  **Create Submission File:** The `submission.csv` file was generated with `user_id`, `item_id`, and the predicted `score`.
+        Processed data is saved in Parquet format for efficiency.
+
+3.2. Stage 1: Candidate Generation (ALS)
+
+    Model: Alternating Least Squares (ALS) from the implicit library is used. ALS is a matrix factorization technique well-suited for implicit feedback data.
+
+    Training Data: Trained on the user-item interaction matrix derived from the full big_matrix, using watch_ratio (clipped > 0) as the confidence score.
+
+    Output: For a given user, ALS generates a list of candidate item IDs that the user might be interested in. This stage narrows down the vast item catalog to a manageable set for the more computationally intensive ranking stage.
+
+    Implementation: See notebooks/2_Model_Training.ipynb.
+
+3.3. Stage 2: Ranking (LightGBM)
+
+    Model: LightGBM, a gradient boosting framework, is used as the ranker. It's chosen for its efficiency, scalability, and ability to handle large, sparse datasets with a mix of categorical and numerical features.
+
+    Task: It's trained as a regression model to predict the watch_ratio for a given (user, item) pair, using the rich feature set created in the data preparation phase.
+
+    Training Data: Trained on the 80% training split of the feature-engineered big_matrix.
+
+    Loss Function: L1 loss (Mean Absolute Error) is used, which is generally more robust to outliers in the watch_ratio target variable.
+
+    Output: For each (user, candidate_item) pair, LightGBM outputs a predicted watch_ratio. These scores are then used to re-rank the candidates from Stage 1.
+
+    Implementation: See notebooks/2_Model_Training.ipynb.
+
+4. Experiments and Evaluation
+
+Two primary evaluation scenarios were conducted (detailed in notebooks/3_Model_Evaluation.ipynb):
+4.1. Evaluation on small_matrix (Dense Subset)
+
+    Purpose: To assess the LightGBM ranker's performance on a familiar, dense dataset where users and items were part of the big_matrix training data. This provides a clean measure of pointwise prediction accuracy and ranking quality on a known cohort.
+
+    Methodology:
+
+        The fully feature-engineered small_matrix data was used.
+
+        For each user in small_matrix, the LightGBM model predicted watch_ratio for all items they interacted with in this matrix.
+
+        Items were ranked based on these predicted scores.
+
+    Metrics:
+
+        Pointwise: Root Mean Squared Error (RMSE), Mean Absolute Error (MAE) for watch_ratio prediction.
+
+        Ranking: Precision@k, Recall@k, nDCG@k (for k = 5, 10, 20, 50, 100, 250), using watch_ratio > 1.0 as the relevance threshold.
+
+4.2. Evaluation on big_matrix Holdout Set
+
+    Purpose: To assess the LightGBM ranker's performance on unseen future interactions from the main dataset distribution.
+
+    Methodology (Current Implementation):
+
+        The 20% chronological test split from the feature-engineered big_matrix was used.
+
+        For each user, the LightGBM model predicted watch_ratio for all items they actually interacted with in this test set.
+
+        Items were ranked based on these predicted scores.
+
+        Note: A true end-to-end evaluation (ALS candidate generation followed by LightGBM re-ranking on those candidates) is a more complete test for this scenario but was simplified for this iteration to focus on the ranker's performance on test set items.
+
+    Metrics:
+
+        Ranking: Precision@k, Recall@k, nDCG@k.
+
+5. Results
+   
+5.1. small_matrix Evaluation Results:
+
+    Pointwise Metrics:
+
+        Overall RMSE: 1.3214
+
+        Overall MAE: 0.3473
+
+    Ranking Metrics (Relevance: watch_ratio > 1.0):
+| Metric        | @5     | @10    | @20    | @50    | @100   | @250   |
+| ------------- | ------ | ------ | ------ | ------ | ------ | ------ |
+| Avg Precision | 0.9137 | 0.9117 | 0.9019 | 0.8571 | 0.8234 | 0.7725 |
+| Avg Recall    | 0.0048 | 0.0095 | 0.0188 | 0.0443 | 0.0848 | 0.1973 |
+| Avg NDCG      | 0.9146 | 0.9128 | 0.9057 | 0.8706 | 0.8396 | 0.7904 |
 
 
-## 4. Experiments & Results
+5.2. big_matrix Holdout Evaluation Results (LGBM ranking on test items):
 
-### Defining Positive Interaction
-The `watch_ratio` was used as the primary engagement signal. A `watch_ratio >= 1.0` was chosen to define a `positive_interaction`.
-*   **Justification:** This threshold implies the user viewed at least the entire video. EDA on `interactions_train.csv` showed this captured ~32.79% of interactions as positive, providing a reasonable (though imbalanced) target for the binary classification ranker.
+    Ranking Metrics (Relevance: watch_ratio > 1.0):
 
-### Model Performance
-The multi-stage hybrid model (ALS for candidate generation, LightGBM for ranking) was evaluated on a test set comprising 20% of the interaction data, split chronologically. The evaluation was performed on 1411 users for whom ground truth positive interactions were available in the test period.
+| Metric        | @5     | @10    | @20    | @50    | @100   | @250   |
+| ------------- | ------ | ------ | ------ | ------ | ------ | ------ |
+| Avg Precision | 0.6859 | 0.6534 | 0.6143 | 0.5339 | 0.4491 | 0.3122 |
+| Avg Recall    | 0.0669 | 0.1220 | 0.2139 | 0.4128 | 0.6123 | 0.8831 |
+| Avg NDCG      | 0.7668 | 0.7508 | 0.7326 | 0.7291 | 0.7781 | 0.9156 |
 
-The following table summarizes the average ranking metrics achieved:
+5.3. Discussion of Results:
 
-| Metric         | @10    | @20    | @50    | @100   | @500   | @1000  |
-|----------------|--------|--------|--------|--------|--------|--------|
-| Avg Precision  | 0.7924 | 0.7529 | 0.6670 | 0.5468 | 0.3103 | 0.2043 |
-| Avg Recall     | 0.0460 | 0.0858 | 0.1819 | 0.2821 | 0.7620 | 1.0000 |
-| Avg NDCG       | 0.8110 | 0.7772 | 0.7036 | 0.6042 | 0.7014 | 0.8476 |
+    Strong Performance on Known Data (small_matrix): The LightGBM ranker demonstrates excellent precision and nDCG on the small_matrix. This indicates it has effectively learned to identify and rank highly engaging items for users and items it was exposed to during training (as this cohort is part of big_matrix). The low recall is an artifact of the dense evaluation setup, where each user has many "relevant" items, making it hard to capture a large fraction in a short top-K list. The MAE of ~0.35 suggests the watch_ratio predictions are, on average, reasonably close to the actuals.
 
-**Observations from Results:**
+    Performance on Unseen Interactions (big_matrix test):
 
-*   **High Top-K Precision:** The model exhibits strong precision at smaller values of K, with approximately 79% of the top 10 recommendations being relevant. This indicates that users are very likely to find engaging content at the beginning of their feed.
-*   **Excellent Ranking Quality (NDCG):** The NDCG scores are notably high, especially NDCG@10 at 0.8110. This signifies that not only are relevant items present in the top recommendations, but they are also ranked appropriately (more relevant items appear higher). Interestingly, NDCG@500 and NDCG@1000 also show strong ranking quality across a larger set of items.
-*   **Recall Improvement with K:** Recall starts low but increases significantly as K grows.
-    *   Recall@50 reaches ~18%, indicating that about one-fifth of all items a user liked in the test set are found within the top 50 recommendations.
-    *   Recall@500 impressively reaches ~76%, meaning the model can retrieve over three-quarters of the user's liked items if a larger recommendation slate is considered.
-    *   Recall@1000 achieves 1.0000, implying that within the top 1000 ranked items (from the `interactions_test.csv` pairs evaluated for each user), all ground truth positive items for those users were captured. This is expected given the "fully observed" nature of the small matrix, as all items were available to be scored. The challenge lies in ranking them correctly.
-*   **Precision-Recall Trade-off:** As expected, precision decreases as K increases, while recall increases. The significant jump in recall at K=500 suggests that many relevant items are scored reasonably well by the ranker but don't make it into the very top positions.
+        As expected, precision and nDCG are lower on the big_matrix test set compared to the small_matrix. This reflects the increased difficulty of predicting for chronologically newer interactions, which may involve less familiar items or evolving user preferences. P@5 of ~0.69 is still a respectable result.
 
-### Handling Memory Constraints
-During development, memory issues were encountered, particularly during feature engineering for the LightGBM ranker (due to the large size of `ranker_train_df` with ~3.7M rows and many features) and during LightGBM training itself. These were addressed by:
-1.  **Feature Engineering Optimization:**
-    *   Downcasting data types (e.g., `float64` to `float32` for embeddings, `int64` to smaller integer types).
-    *   Explicitly deleting large intermediate DataFrames and using `gc.collect()`.
-    *   Calculating interaction counts more efficiently using `map(groupby().size())` instead of `transform('size')`.
-2.  **LightGBM Parameter Tuning for Memory:**
+        Recall is significantly higher on the big_matrix test set. This is because users in the test set have a smaller number of actual positive interactions (compared to the ~3300 items per user in the small_matrix scope), making it easier to recall a larger fraction of these true positives.
+
+    Overall: The model shows strong learning capabilities. The difference in metrics between the two evaluation sets highlights the importance of evaluating on data that mirrors the deployment scenario (i.e., the big_matrix holdout).
+
+6. Conclusions and Future Work
+6.1. Conclusions:
+
+    The implemented feature engineering, particularly the handling of daily item features (ratios, duplicate removal), was crucial for managing memory and creating an effective LightGBM ranker.
+
+    The LightGBM model demonstrates strong ranking capabilities, especially on data it is familiar with. Its performance on the big_matrix holdout is reasonable and provides a solid baseline.
+
+    The small_matrix serves as an excellent tool for detailed validation of the ranker on a dense, known cohort, confirming its ability to learn engagement patterns.
+
+    The choice of L1 loss for the watch_ratio regression appears justified given the nature of the target.
+
+6.2. Future Work:
+
+    Full End-to-End Evaluation: Implement the complete two-stage evaluation on the big_matrix test set: ALS candidate generation followed by LightGBM re-ranking of those candidates. This will provide the most realistic measure of overall system performance.
+
+    Hyperparameter Tuning: Systematically tune hyperparameters for both ALS (factors, regularization, iterations) and LightGBM (num_leaves, learning_rate, feature_fraction, etc.) using a proper validation set derived from the big_matrix training data.
+
+    Advanced Feature Engineering:
+
+        Embeddings: Incorporate pre-trained or jointly learned embeddings for users, items, authors, tags, etc., as features for LightGBM.
+
+        Interaction Features: Create features representing user-item interaction history (e.g., user's average watch ratio on previously seen items by the same author, or in the same category).
+
+        Social Network Features: Explore ways to integrate information from social_network.csv (e.g., features based on friends' interactions).
+
+    Explore Different Candidate Generators: Experiment with other candidate generation techniques beyond ALS (e.g., item-based collaborative filtering, two-tower neural models).
+
+    Alternative Ranking Models: Evaluate more complex ranking models, such as deep learning-based rankers (e.g., DeepFM, Wide & Deep), if computational resources allow.
+
+    Cold-Start Strategies: Develop and evaluate specific strategies for handling new users and new items more effectively.
+
+    Diversity and Serendipity: Incorporate objectives or post-processing steps to improve the diversity and serendipity of recommendations, beyond pure accuracy/engagement.
     *   Setting `max_bin = 128` in LightGBM parameters helped reduce memory during training.
     *   With these optimizations, training on the full dataset became feasible.
