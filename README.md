@@ -143,6 +143,8 @@ Detailed in `notebooks/3_Model_Evaluation.ipynb`.
 
 ### 5.2 `big_matrix` Holdout Evaluation Results
 
+* **Ranking Metrics (Relevance: `watch_ratio > 1.0`):**
+
 | Metric        | @5     | @10    | @20    | @50    | @100   | @250   |
 | ------------- | ------ | ------ | ------ | ------ | ------ | ------ |
 | Avg Precision | 0.6859 | 0.6534 | 0.6143 | 0.5339 | 0.4491 | 0.3122 |
