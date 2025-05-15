@@ -38,7 +38,7 @@ Detailed in `notebooks/1_Data_Preparation.ipynb`, this phase includes:
   Ingests `big_matrix.csv`, `small_matrix.csv`, `user_features.csv`, `item_categories.csv`, and `item_daily_features.csv`.
 
 * **Initial Cleaning:**
-  Handles missing values, data types, and parses complex fields (e.g., item tags).
+  Handles missing values, data types, and parses complex fields (item tags, etc...).
 
 * **Feature Creation:**
 
@@ -66,7 +66,7 @@ Detailed in `notebooks/1_Data_Preparation.ipynb`, this phase includes:
   List of candidate item IDs per user.
 
 * **Reference:**
-  `notebooks/2_Model_Training.ipynb`
+  `notebooks/3_Model_Training.ipynb`
 
 ### 3.3 Stage 2: Ranking (LightGBM)
 
@@ -86,13 +86,13 @@ Detailed in `notebooks/1_Data_Preparation.ipynb`, this phase includes:
   Predicted `watch_ratio` used to re-rank ALS candidates.
 
 * **Reference:**
-  `notebooks/2_Model_Training.ipynb`
+  `notebooks/3_Model_Training.ipynb`
 
 ---
 
 ## 4. Experiments and Evaluation
 
-Detailed in `notebooks/3_Model_Evaluation.ipynb`.
+Detailed in `notebooks/4_Model_Evaluation.ipynb`.
 
 ### 4.1 Evaluation on `small_matrix` (Dense Subset)
 
