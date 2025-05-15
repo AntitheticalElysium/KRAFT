@@ -172,12 +172,6 @@ Detailed in `notebooks/4_Model_Evaluation.ipynb`.
 
 ## 6. Conclusions and Future Work
 
-Sure! Here's a more concise version of your **Conclusions and Future Work** section, while preserving all key insights:
-
----
-
-## 6. Conclusions and Future Work
-
 ### 6.1. Conclusions
 
 * Careful feature engineering—especially optimized daily item features—was critical for memory efficiency and model performance.
