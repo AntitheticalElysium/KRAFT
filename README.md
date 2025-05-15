@@ -200,9 +200,6 @@ These steps enabled processing the 12.5M-row `big_matrix` on a single machine.
 * **End-to-End Evaluation:**
   Implement full ALS → LightGBM pipeline on test set.
 
-* **Hyperparameter Tuning:**
-  Tune ALS and LightGBM using a validation split from training data.
-
 * **Advanced Feature Engineering:**
 
   * *Embeddings:* For users, items, tags, authors, etc.
